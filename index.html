@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" href="favicon.png" type="image/png">
 <meta name="description" content="這是一款專門為籃球比賽所設計的線上網站，無需任何花費就可紀錄比賽中球員的各項數據以及命中率，操作介面簡單明瞭且非常實用，並且提供匯出方便查看。">
 <title>計分板 Pro</title>
@@ -16,8 +16,12 @@
   --text: #f8fafc; --muted: #94a3b8; --bdr: rgba(255,255,255,0.06);
 }
 
-/* 💎 全域觸擊動畫基礎 */
-button, .tab, .card, input { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+/* 💎 全域觸擊動畫基礎與操作優化 */
+button, .tab, .card, input { 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    /* 修正點 1：禁用觸控延遲與縮放 */
+    touch-action: manipulation; 
+}
 button:active { transform: scale(0.92); opacity: 0.8; }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -44,9 +48,21 @@ header h1 { font-family: 'Oswald', sans-serif; font-size: 1.8rem; letter-spacing
 input { width: 100%; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--bdr); border-radius: 12px; color: white; margin-bottom: 12px; font-size: 16px; }
 input:focus { border-color: var(--red); background: rgba(0,0,0,0.3); outline: none; }
 
-.import-flex { display: flex; gap: 10px; margin-bottom: 10px; }
-.import-flex input:nth-child(1) { flex: 1; }
-.import-flex input:nth-child(2) { flex: 2; }
+/* 💎 修正點 2：登錄球員排版升級 - 解決格子跑版問題 */
+.import-flex { 
+    display: flex; 
+    gap: 12px; 
+    margin-bottom: 12px; 
+    flex-wrap: wrap; /* 允許自動換行 */
+}
+.import-flex input:nth-child(1) { flex: 1; min-width: 80px; } /* 背號欄位 */
+.import-flex input:nth-child(2) { flex: 3; min-width: 180px; } /* 姓名欄位 */
+
+@media (max-width: 480px) {
+    .import-flex { flex-direction: column; gap: 0; }
+    .import-flex input { width: 100%; }
+}
+
 .player-list-preview { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 12px; margin-top: 10px; font-size: 0.9rem; }
 .player-item { display: inline-flex; align-items: center; background: var(--panel); padding: 6px 12px; border-radius: 8px; margin: 4px; border: 1px solid var(--bdr); color: var(--accent); font-weight: 700; }
 .btn-del-player { margin-left: 8px; color: var(--red); cursor: pointer; font-size: 1.2rem; }
@@ -119,7 +135,7 @@ th { background: rgba(255,255,255,0.05); color: var(--muted); font-size: 0.75rem
     <div class="card">
         <div style="font-size:0.8rem; color:var(--gold); margin-bottom:12px; font-weight:900;">球員名單匯入</div>
         <div class="import-flex">
-            <input type="number" id="p-num" placeholder="背號 (00-99)" oninput="if(value.length>2)value=value.slice(0,2); if(value<0)value=0">
+            <input type="number" id="p-num" placeholder="背號" oninput="if(value.length>2)value=value.slice(0,2); if(value<0)value=0">
             <input type="text" id="p-name" placeholder="球員姓名">
         </div>
         <button class="btn-ui" style="width:100%; background:rgba(251, 191, 36, 0.1); color:var(--gold); border:1px solid var(--gold); border-radius:12px; padding:12px; font-weight:bold;" onclick="addSinglePlayer()">+ 新增球員</button>
@@ -210,7 +226,7 @@ function addSinglePlayer(){
     const name = nameInput.value.trim();
     
     if(!num || !name) return alert("請同時輸入號碼與姓名");
-    if(num < 0) num = "0"; // 防呆：背號不為負
+    if(num < 0) num = "0"; 
     if(players.some(p => p.name === name)) return alert("球員姓名重複了");
 
     players.push({ num: num, name: name });
@@ -351,7 +367,6 @@ function confirmEdit(){
         s[f] = Math.max(0, val);
     });
     
-    // 防呆：修正時確保命中數不超過出手數
     if(s.f3m > s.f3a) s.f3m = s.f3a;
     if(s.f2m > s.f2a) s.f2m = s.f2a;
     if(s.ftm > s.fta) s.ftm = s.fta;
