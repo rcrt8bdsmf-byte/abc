@@ -2,263 +2,203 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<!-- 修正行動裝置雙擊縮放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" href="favicon.png" type="image/png">
-<meta name="description" content="這是一款專門為籃球比賽所設計的線上網站，無需任何花費就可紀錄比賽中球員的各項數據以及命中率，操作介面簡單明瞭且非常實用，並且提供匯出方便查看。">
-<title>計分板 Pro</title>
+<meta name="description" content="籃球比賽紀錄專業工具，支援雲端同步與戰報匯出。">
+<title>計分板 Pro Elite | 雲端帳號版</title>
 
-<!-- 📱 PWA App 設定區域開始 -->
+<!-- 📱 PWA App 設定 -->
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="計分板 Pro">
 
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
-        console.log('App 管家啟動成功！');
-      }).catch(err => {
-        console.log('管家啟動失敗: ', err);
-      });
-    });
-  }
-</script>
-<!-- 📱 PWA App 設定區域結束 -->
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
 :root{
-  --bg: #0f172a; --mid: #1e293b; --panel: #334155;
-  --red: #f43f5e; --red-glow: rgba(244, 63, 94, 0.4);
-  --gold: #fbbf24; --green: #10b981;
+  --bg: #0f172a; --mid: #1e293b; --red: #f43f5e; --gold: #fbbf24;
   --text: #f8fafc; --muted: #94a3b8; --bdr: rgba(255,255,255,0.06);
 }
-button, .tab, .card, input { 
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-    touch-action: manipulation; 
-}
+* { margin:0; padding:0; box-sizing:border-box; touch-action: manipulation; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; }
+button { transition: all 0.2s; cursor: pointer; border: none; }
 button:active { transform: scale(0.92); opacity: 0.8; }
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; overflow-x: hidden; }
-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.4); border-bottom: 2px solid var(--red); }
-header h1 { font-family: 'Oswald', sans-serif; font-size: 1.8rem; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px var(--red-glow); }
+
+/* 🔑 登入遮罩 */
+#login-screen { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: var(--bg); z-index: 9999; display: flex; 
+    align-items: center; justify-content: center; padding: 20px;
+}
+.login-box { background: var(--mid); padding: 30px; border-radius: 24px; width: 100%; max-width: 400px; border: 1px solid var(--bdr); text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.auth-input { width: 100%; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--bdr); border-radius: 12px; color: white; margin-bottom: 12px; font-size: 16px; }
+
+header { background: #000; padding: 20px; text-align: center; border-bottom: 2px solid var(--red); }
+header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color: #fff; }
 .tabs { display: flex; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--bdr); }
-.tab { padding: 16px; font-size: 0.95rem; font-weight: 700; color: var(--muted); flex: 1; text-align: center; cursor: pointer; position: relative; }
-.tab.active { color: var(--red); }
-.tab.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; background: var(--red); border-radius: 10px 10px 0 0; box-shadow: 0 -2px 10px var(--red); }
-.panel { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; animation: fadeIn 0.4s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.tab { padding: 16px; flex: 1; text-align: center; font-weight: 700; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+.tab.active { color: var(--red); border-bottom: 3px solid var(--red); }
+
+.panel { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
 .panel.active { display: block; }
-.card { background: var(--mid); border: 1px solid var(--bdr); border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-input { width: 100%; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--bdr); border-radius: 12px; color: white; margin-bottom: 12px; font-size: 16px; }
-input:focus { border-color: var(--red); background: rgba(0,0,0,0.3); outline: none; }
-.import-flex { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-.import-flex input:nth-child(1) { flex: 1; min-width: 80px; } 
-.import-flex input:nth-child(2) { flex: 3; min-width: 180px; } 
-@media (max-width: 480px) { .import-flex { flex-direction: column; gap: 0; } .import-flex input { width: 100%; } }
-.player-list-preview { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 12px; margin-top: 10px; font-size: 0.9rem; }
-.player-item { display: inline-flex; align-items: center; background: var(--panel); padding: 6px 12px; border-radius: 8px; margin: 4px; border: 1px solid var(--bdr); color: var(--accent); font-weight: 700; }
-.btn-del-player { margin-left: 8px; color: var(--red); cursor: pointer; font-size: 1.2rem; }
-.scoreboard { display: grid; grid-template-columns: 1fr 0.3fr 1fr; align-items: center; text-align: center; background: linear-gradient(145deg, #334155, #1e293b); border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); }
-.score-num { font-family: 'Oswald', sans-serif; font-size: 4rem; font-weight: 700; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
-.opp-btns { display: flex; justify-content: center; gap: 8px; margin-top: 15px; }
-.opp-btns button { padding: 8px 14px; font-size: 0.8rem; font-weight: 900; border-radius: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--bdr); }
-.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
-.pcard { background: var(--mid); border-radius: 24px; padding: 18px; border: 1px solid var(--bdr); position: relative; overflow: hidden; }
-.pcard::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--red); }
-.pcard-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.btn-edit-small { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--bdr); padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.05); }
-.pct-display { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 15px; text-align: center; }
-.pct-val { font-family: 'Oswald', sans-serif; font-weight: bold; color: var(--green); display: block; font-size: 1rem; }
-.btn-group-score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-.btn-in { background: #10b981; color: white; border: none; padding: 14px 0; border-radius: 14px; font-weight: 900; font-size: 1.1rem; }
-.btn-out { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--bdr); padding: 10px 0; border-radius: 14px; font-size: 0.75rem; }
-.btn-group-other { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.btn-stat { background: var(--panel); color: #fff; border: 1px solid var(--bdr); border-radius: 12px; padding: 10px 0; font-size: 0.7rem; position: relative; }
-.btn-minus { position: absolute; top: -8px; right: -8px; background: var(--red); color: white; width: 22px; height: 22px; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--mid); }
-.history-item { margin-bottom: 15px; }
-.history-card-header { cursor: pointer; border-left: 6px solid var(--red); display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--mid); border-radius: 12px; }
-.history-content { max-height: 0; overflow: hidden; transition: max-height 0.5s cubic-bezier(0, 1, 0, 1); background: var(--mid); border-radius: 0 0 20px 20px; border: 1px solid var(--bdr); border-top: none; }
-.history-content.active { max-height: 2000px; transition: max-height 0.8s ease-in-out; padding: 20px; margin-bottom: 20px; }
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: none; z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-.modal-content { background: var(--mid); padding: 30px; border-radius: 28px; width: 100%; max-width: 420px; border: 1px solid var(--red); }
-.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-.tw { overflow-x: auto; border-radius: 15px; border: 1px solid var(--bdr); }
-table { width: 100%; border-collapse: collapse; min-width: 900px; background: rgba(255,255,255,0.01); }
-th, td { padding: 16px 10px; text-align: center; border-bottom: 1px solid var(--bdr); }
-th { background: rgba(255,255,255,0.05); color: var(--muted); font-size: 0.75rem; font-weight: 900; }
-.info-section { font-size: 0.85rem; color: var(--muted); line-height: 1.8; margin-top: 40px; border-top: 1px solid var(--bdr); padding-top: 20px; }
-.info-section h4 { color: var(--text); margin-bottom: 8px; }
-#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--green); color: white; padding: 12px 30px; border-radius: 40px; font-weight: 900; display: none; z-index: 2000; }
-.btn-main-red { width: 100%; background: var(--red); color: white; border: none; border-radius: 16px; padding: 18px; font-size: 1.1rem; font-weight: 900; box-shadow: 0 6px 0 #9f1239; }
-.btn-main-gold { width: 100%; background: var(--gold); color: #000; border: none; border-radius: 16px; padding: 18px; font-size: 1.1rem; font-weight: 900; box-shadow: 0 6px 0 #b45309; }
-#export-area { position: absolute; left: -9999px; width: 1000px; background: white; color: black; padding: 30px; }
+.card { background: var(--mid); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--bdr); }
+.score-num { font-family: 'Oswald'; font-size: 3.5rem; font-weight: 700; color: #fff; }
+
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 15px; }
+.pcard { background: var(--mid); border-radius: 20px; padding: 15px; border: 1px solid var(--bdr); border-left: 5px solid var(--red); }
+.btn-in { background: #10b981; color: white; border-radius: 12px; padding: 12px 0; font-weight: 900; }
+
+.history-item { margin-bottom: 12px; background: var(--mid); border-radius: 12px; overflow: hidden; border: 1px solid var(--bdr); }
+.history-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.history-body { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; background: rgba(0,0,0,0.2); }
+.history-body.active { max-height: 1500px; padding: 15px; border-top: 1px solid var(--bdr); }
+
+#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 30px; border-radius: 40px; display: none; z-index: 2000; font-weight: bold; }
 </style>
 </head>
 <body>
 
-<header><h1>專業計分板</h1></header>
+<!-- 🔑 登入介面 -->
+<div id="login-screen">
+    <div class="login-box">
+        <h2 style="margin-bottom:20px; font-family:'Oswald'; color:var(--red); letter-spacing:2px;">PRO DATA LOGIN</h2>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Email 地址">
+        <input type="password" id="auth-password" class="auth-input" placeholder="設定密碼">
+        <button id="btn-login" class="auth-input" style="background:var(--red); font-weight:900; color:white; margin-top:10px;">進入系統 / 註冊帳號</button>
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:15px;">※ 首次登入將自動建立專屬雲端帳號</p>
+    </div>
+</div>
+
+<header>
+    <h1>BASKETBALL PRO</h1>
+    <div id="user-info" style="font-size:0.7rem; color:var(--gold); margin-top:5px; font-weight:bold;"></div>
+</header>
 
 <div class="tabs">
     <div class="tab active" onclick="go('setup')">設定</div>
     <div class="tab" onclick="go('record')">紀錄</div>
-    <div class="tab" onclick="go('history')">歷史數據</div>
+    <div class="tab" onclick="go('history')">分析紀錄</div>
+    <div class="tab" id="btn-logout" style="color:var(--muted)">登出</div>
 </div>
 
 <div class="panel active" id="p-setup">
     <div class="card">
-        <div style="font-size:0.8rem; color:var(--gold); margin-bottom:12px; font-weight:900;">比賽基本資訊</div>
-        <input type="text" id="g-team" value="我方球隊">
-        <input type="text" id="g-opp" placeholder="對手球隊名稱">
+        <div style="font-size:0.8rem; color:var(--gold); margin-bottom:10px; font-weight:bold;">比賽資訊</div>
+        <input type="text" id="g-team" value="我的球隊">
+        <input type="text" id="g-opp" placeholder="對手隊名">
         <input type="date" id="g-date">
-    </div>
-    
-    <div class="card">
-        <div style="font-size:0.8rem; color:var(--gold); margin-bottom:12px; font-weight:900;">球員名單匯入</div>
-        <div class="import-flex">
-            <input type="number" id="p-num" placeholder="背號" oninput="if(value.length>2)value=value.slice(0,2); if(value<0)value=0">
-            <input type="text" id="p-name" placeholder="球員姓名">
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <input type="number" id="p-num" placeholder="背號" style="flex:1" oninput="if(value.length>2)value=value.slice(0,2)">
+            <input type="text" id="p-name" placeholder="球員姓名" style="flex:2">
         </div>
-        <button class="btn-ui" style="width:100%; background:rgba(251, 191, 36, 0.1); color:var(--gold); border:1px solid var(--gold); border-radius:12px; padding:12px; font-weight:bold;" onclick="addSinglePlayer()">+ 新增球員</button>
-        
-        <div id="player-preview-container" style="display:none;">
-            <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; font-weight:700; margin-top:15px;">已加入名單（點擊 ✖ 修改）：</div>
-            <div id="player-list-preview" class="player-list-preview"></div>
-            <button style="background:none; border:none; color:var(--red); font-size:0.75rem; cursor:pointer; margin-top:10px; font-weight:bold;" onclick="clearPlayers()">清空名單</button>
-        </div>
+        <button onclick="addSinglePlayer()" style="width:100%; padding:12px; background:rgba(251,191,36,0.1); color:var(--gold); border:1px solid var(--gold); border-radius:12px; font-weight:bold;">+ 新增球員</button>
+        <div id="p-list-preview" style="margin-top:15px; color:var(--muted); font-size:0.9rem;"></div>
     </div>
-    
-    <button class="btn-main-red btn-ui" onclick="startGame()">▶ 開始比賽</button>
-
-    <div class="info-section">
-        <h4>💡 使用說明</h4>
-        <p>1. 在設定分頁匯入球員背號與姓名。<br>2. 紀錄分頁中點擊「+X」代表命中，點擊「X失」代表投丟，系統自動計算命中率。<br>3. 比賽結束後儲存數據，可在歷史數據分頁下載圖片戰報。</p>
-        <h4 style="margin-top:15px;">🔒 隱私政策</h4>
-        <p>本站為純前端工具，所有數據僅儲存在您的瀏覽器本地（Local Storage），不會上傳至任何伺服器。清除瀏覽器快取將會移除歷史紀錄。</p>
-    </div>
+    <button onclick="startGame()" style="width:100%; padding:20px; background:var(--red); border-radius:16px; font-weight:900; font-size:1.2rem; box-shadow: 0 4px 15px rgba(244,63,94,0.3);">▶ 開始正式紀錄</button>
 </div>
 
 <div class="panel" id="p-record">
-    <div class="scoreboard card">
-        <div><small id="txt-us" style="color:var(--muted); font-weight:900; display:block;">我方</small><span class="score-num" id="sb-us">0</span></div>
-        <div style="font-size:1.2rem; color:var(--muted); font-weight:900; font-family:'Oswald'">VS</div>
-        <div>
-            <small id="txt-them" style="color:var(--muted); font-weight:900; display:block;">對手</small><span class="score-num" id="sb-them">0</span>
-            <div class="opp-btns">
-                <button class="btn-ui" onclick="adjThem(3)">+3</button>
-                <button class="btn-ui" onclick="adjThem(2)">+2</button>
-                <button class="btn-ui" onclick="adjThem(1)">+1</button>
-                <button class="btn-ui" onclick="adjThem(-1)">-1</button>
-            </div>
+    <div class="card" style="text-align:center; background:linear-gradient(145deg, #1e293b, #0f172a);">
+        <span class="score-num" id="sb-us">0</span> <span style="font-size:1.5rem; opacity:0.3; margin:0 15px;">VS</span> <span class="score-num" id="sb-them">0</span>
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:15px;">
+            <button onclick="adjThem(1)" style="padding:10px 20px; background:var(--panel); color:white; border-radius:10px; font-weight:bold;">對手 +1</button>
+            <button onclick="adjThem(-1)" style="padding:10px 20px; background:rgba(244,63,94,0.2); color:var(--red); border-radius:10px; font-weight:bold;">-1 修正</button>
         </div>
     </div>
-    <div class="pgrid" id="pgrid"></div>
-    <button class="btn-main-gold btn-ui" style="margin-top:25px;" onclick="saveGame()">💾 儲存本場比賽數據</button>
+    <div id="pgrid" class="pgrid"></div>
+    <button onclick="saveGame()" style="width:100%; padding:20px; background:var(--gold); color:#000; border-radius:16px; font-weight:900; margin-top:20px; box-shadow: 0 4px 15px rgba(251,191,36,0.3);">💾 結束比賽並同步雲端</button>
 </div>
 
 <div class="panel" id="p-history">
-    <div id="hist-list"></div>
-</div>
-
-<div class="modal" id="editModal">
-    <div class="modal-content">
-        <h3 id="editPlayerName" style="color:var(--gold); margin-bottom:10px; font-weight:900;">修正球員數據</h3>
-        <div class="modal-grid" id="editInputs"></div>
-        <div style="margin-top:25px; display:flex; gap:12px;">
-            <button class="btn-ui" style="flex:1; background:rgba(255,255,255,0.1); color:white; border:none; padding:12px; border-radius:12px; font-weight:bold;" onclick="closeModal()">取消</button>
-            <button class="btn-ui" style="flex:1; background:var(--gold); color:#000; border:none; padding:12px; border-radius:12px; font-weight:900;" onclick="confirmEdit()">儲存修正</button>
-        </div>
-    </div>
-</div>
-
-<div id="export-area">
-    <h2 id="exp-title">成績單</h2>
-    <p id="exp-meta"></p>
-    <table border="1" style="width:100%; border-collapse:collapse; margin-top:20px; text-align:center; font-family: sans-serif;">
-        <thead>
-            <tr style="background:#eee;">
-                <th>#</th><th>球員</th><th>得分</th><th>三分</th><th>兩分</th><th>罰球</th><th>助</th><th>阻</th><th>抄</th><th>失</th><th>犯</th>
-            </tr>
-        </thead>
-        <tbody id="exp-body"></tbody>
-    </table>
+    <div id="hist-list" style="text-align:center; padding:40px; opacity:0.5;">同步中...</div>
 </div>
 
 <div id="toast"></div>
 
 <script>
+// 📋 --- 1. Firebase 初始化 ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCFK9ocG6pfzVRT3fa1Tg1xbGLROhT1xmw",
+  authDomain: "prodata-a547a.firebaseapp.com",
+  projectId: "prodata-a547a",
+  storageBucket: "prodata-a547a.firebasestorage.app",
+  messagingSenderId: "177275235931",
+  appId: "1:177275235931:web:621d1f3bd10b3512df597e",
+  measurementId: "G-CF3FEMLYY8"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// 📋 --- 2. 帳號與同步邏輯 ---
+let currentUser = null;
+
+document.getElementById('btn-login').onclick = async () => {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    if(!email || !password) return alert("請輸入完整帳密");
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+        if (e.code === 'auth/user-not-found') {
+            await auth.createUserWithEmailAndPassword(email, password);
+            showToast("帳號建立成功！");
+        } else {
+            alert('登入失敗：' + e.message);
+        }
+    }
+};
+
+document.getElementById('btn-logout').onclick = () => auth.signOut();
+
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('user-info').innerText = '帳戶：' + user.email;
+        loadHistoryFromCloud();
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        currentUser = null;
+    }
+});
+
+// 📋 --- 3. 核心紀錄功能 ---
 let players = [], stats = {}, score = {us:0, them:0}, gInfo = {};
-let historyData = JSON.parse(localStorage.getItem('basket_pro_v5') || '[]');
-let currentEditName = "";
+let historyData = [];
 
 function go(id){
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const tab = document.querySelector(`[onclick="go('${id}')"]`);
-    if(tab) tab.classList.add('active');
     document.getElementById('p-'+id).classList.add('active');
-    if(id==='history') drawHistoryList();
+    const targetTab = document.querySelector(`[onclick="go('${id}')"]`);
+    if(targetTab) targetTab.classList.add('active');
 }
 
 function addSinglePlayer(){
-    const numInput = document.getElementById('p-num');
-    const nameInput = document.getElementById('p-name');
-    let num = numInput.value.trim();
-    const name = nameInput.value.trim();
-    if(!num || !name) return alert("請同時輸入號碼與姓名");
-    if(num < 0) num = "0"; 
-    if(players.some(p => p.name === name)) return alert("球員姓名重複了");
-    players.push({ num: num, name: name });
-    numInput.value = ""; nameInput.value = ""; numInput.focus();
-    updatePlayerPreview();
-}
-
-function removePlayer(idx){
-    players.splice(idx, 1);
-    updatePlayerPreview();
-}
-
-function updatePlayerPreview(){
-    const container = document.getElementById('player-preview-container');
-    const list = document.getElementById('player-list-preview');
-    if(players.length > 0){
-        container.style.display = 'block';
-        list.innerHTML = players.map((p, i) => `
-            <span class="player-item">#${p.num} ${p.name} 
-                <span class="btn-del-player" onclick="removePlayer(${i})">✖</span>
-            </span>`).join('');
-    } else {
-        container.style.display = 'none';
-    }
-}
-
-function clearPlayers(){
-    if(confirm("確定要清空已加入的名單嗎？")){
-        players = [];
-        updatePlayerPreview();
-    }
+    const n = document.getElementById('p-num').value;
+    const nm = document.getElementById('p-name').value;
+    if(!n || !nm) return;
+    players.push({num:n, name:nm});
+    document.getElementById('p-list-preview').innerText = "名單：" + players.map(p => `#${p.num} ${p.name}`).join(' | ');
+    document.getElementById('p-num').value = ''; document.getElementById('p-name').value = '';
 }
 
 function startGame(){
-    if(players.length === 0) return alert("請先匯入名單");
-    gInfo = {
-        team: document.getElementById('g-team').value,
-        opp: document.getElementById('g-opp').value || '對手',
-        date: document.getElementById('g-date').value || new Date().toISOString().slice(0,10)
-    };
-    score = {us:0, them:0};
-    stats = {};
-    players.forEach(p => {
-        stats[p.name] = { pts:0, f3m:0, f3a:0, f2m:0, f2a:0, ftm:0, fta:0, ast:0, blk:0, stl:0, to:0, foul:0, num: p.num };
-    });
-    document.getElementById('txt-us').innerText = gInfo.team;
-    document.getElementById('txt-them').innerText = gInfo.opp;
-    refreshUI();
-    go('record');
+    if(players.length === 0) return alert("名單為空");
+    gInfo = { team: document.getElementById('g-team').value, opp: document.getElementById('g-opp').value || '對手', date: document.getElementById('g-date').value || new Date().toISOString().slice(0,10) };
+    score = {us:0, them:0}; stats = {};
+    players.forEach(p => { stats[p.name] = { pts:0, f3m:0, f3a:0, f2m:0, f2a:0, ftm:0, fta:0, ast:0, blk:0, num: p.num }; });
+    refreshUI(); go('record');
 }
 
 function refreshUI(){
@@ -268,175 +208,102 @@ function refreshUI(){
     players.forEach(p => {
         const s = stats[p.name];
         h += `<div class="pcard">
-            <div class="pcard-hdr">
-                <strong><span style="color:var(--accent); font-family:'Oswald'; margin-right:5px;">#${s.num}</span> ${p.name}</strong>
-                <button class="btn-edit-small btn-ui" onclick="openEdit('${p.name}')">修正 ✎</button>
-            </div>
-            <div class="pct-display">
-                <div>三分<span class="pct-val">${pct(s.f3m,s.f3a)}</span></div>
-                <div>兩分<span class="pct-val">${pct(s.f2m,s.f2a)}</span></div>
-                <div>罰球<span class="pct-val">${pct(s.ftm,s.fta)}</span></div>
-                <div style="grid-column: span 3; margin-top:8px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                    個人得分: <b style="color:var(--red); font-size:1.2rem; font-family:'Oswald'">${s.pts}</b>
-                </div>
-            </div>
-            <div class="btn-group-score">
-                <button class="btn-in btn-ui" onclick="upS('${p.name}','f3',1)">+3</button>
-                <button class="btn-in btn-ui" onclick="upS('${p.name}','f2',1)">+2</button>
-                <button class="btn-in btn-ui" onclick="upS('${p.name}','ft',1)">+1</button>
-                <button class="btn-out btn-ui" onclick="upS('${p.name}','f3',0)">3分失</button>
-                <button class="btn-out btn-ui" onclick="upS('${p.name}','f2',0)">2分失</button>
-                <button class="btn-out btn-ui" onclick="upS('${p.name}','ft',0)">罰球失</button>
-            </div>
-            <div class="btn-group-other">
-                ${['ast','blk','stl','to','foul'].map(k => `
-                    <button class="btn-stat btn-ui" onclick="upO('${p.name}','${k}',1)">
-                        ${lbl(k)}<br>${s[k]}
-                        <div class="btn-minus btn-ui" onclick="event.stopPropagation(); upO('${p.name}','${k}',-1)">-</div>
-                    </button>
-                `).join('')}
+            <div style="font-weight:900; margin-bottom:10px; font-size:1.1rem; color:var(--gold);">#${s.num} ${p.name} <span style="float:right; color:var(--red);">${s.pts}分</span></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                <button class="btn-in" onclick="upS('${p.name}','f3',1)">+3</button>
+                <button class="btn-in" onclick="upS('${p.name}','f2',1)">+2</button>
+                <button class="btn-in" onclick="upS('${p.name}','ft',1)">+1</button>
             </div>
         </div>`;
     });
     document.getElementById('pgrid').innerHTML = h;
 }
 
-function lbl(k){ return {ast:'助攻',blk:'火鍋',stl:'抄截',to:'失誤',foul:'犯規'}[k]; }
-function pct(m,a){ return a===0 ? "0%" : `${Math.round((m/a)*100)}%`; }
-
 function upS(name, type, hit){
-    const s = stats[name];
-    if(hit){
-        s[type+'m']++; s[type+'a']++;
-        let p = type==='f3'?3:(type==='f2'?2:1);
-        s.pts += p; score.us += p;
-    } else { 
-        s[type+'a']++; 
-    }
-    refreshUI();
-}
-
-function upO(name, type, v){
-    stats[name][type] = Math.max(0, stats[name][type] + v);
-    refreshUI();
+    const s = stats[name]; s[type+'m']++; s[type+'a']++;
+    let p = type==='f3'?3:(type==='f2'?2:1);
+    s.pts += p; score.us += p; refreshUI();
 }
 
 function adjThem(v){ score.them = Math.max(0, score.them+v); refreshUI(); }
 
-function openEdit(name){
-    currentEditName = name;
-    document.getElementById('editPlayerName').innerText = `修正 #${stats[name].num} ${name} 數據`;
-    const fields = [
-        {k:'f3m', l:'3分命中'}, {k:'f3a', l:'3分出手'},
-        {k:'f2m', l:'2分命中'}, {k:'f2a', l:'2分出手'},
-        {k:'ftm', l:'罰球命中'}, {k:'fta', l:'罰球出手'},
-        {k:'ast', l:'助攻'}, {k:'blk', l:'火鍋'},
-        {k:'stl', l:'抄截'}, {k:'to', l:'失誤'}, {k:'foul', l:'犯規'}
-    ];
-    let h = '';
-    fields.forEach(f => {
-        h += `<div><label>${f.l}</label><input type="number" id="edit_${f.k}" value="${stats[name][f.k]}"></div>`;
-    });
-    document.getElementById('editInputs').innerHTML = h;
-    document.getElementById('editModal').style.display = 'flex';
+// 📋 --- 4. 雲端同步與數據拉取 ---
+async function saveGame(){
+    if(!currentUser) return alert("請先登入");
+    if(!confirm("確定要儲存比賽數據至雲端？")) return;
+    
+    const matchData = {
+        owner: currentUser.uid,
+        info: gInfo,
+        score: score,
+        players: players,
+        stats: stats,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    try {
+        await db.collection('user_matches').add(matchData);
+        showToast("雲端儲存成功！");
+        loadHistoryFromCloud();
+        go('history');
+    } catch (e) {
+        alert("儲存失敗：" + e.message);
+    }
 }
 
-function confirmEdit(){
-    const s = stats[currentEditName];
-    const fields = ['f3m','f3a','f2m','f2a','ftm','fta','ast','blk','stl','to','foul'];
-    fields.forEach(f => {
-        let val = parseInt(document.getElementById(`edit_${f}`).value) || 0;
-        s[f] = Math.max(0, val);
-    });
-    if(s.f3m > s.f3a) s.f3m = s.f3a;
-    if(s.f2m > s.f2a) s.f2m = s.f2a;
-    if(s.ftm > s.fta) s.ftm = s.fta;
-    s.pts = (s.f3m * 3) + (s.f2m * 2) + s.ftm;
-    let total = 0;
-    for(let n in stats){ total += stats[n].pts; }
-    score.us = total;
-    closeModal();
-    refreshUI();
+async function loadHistoryFromCloud(){
+    if(!currentUser) return;
+    const listDiv = document.getElementById('hist-list');
+    try {
+        const snapshot = await db.collection('user_matches')
+            .where('owner', '==', currentUser.uid)
+            .orderBy('timestamp', 'desc')
+            .get();
+        
+        historyData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        drawHistory();
+    } catch (e) {
+        listDiv.innerHTML = "紀錄載入失敗，請確認資料庫權限。";
+    }
 }
 
-function closeModal(){ document.getElementById('editModal').style.display = 'none'; }
-
-function saveGame(){
-    if(!confirm("確定要結束並儲存比賽數據嗎？")) return;
-    historyData.unshift({ id: Date.now(), info:{...gInfo}, score:{...score}, players:[...players], stats:JSON.parse(JSON.stringify(stats)) });
-    localStorage.setItem('basket_pro_v5', JSON.stringify(historyData));
-    showToast("比賽數據已存檔 ✓");
-    go('history');
-}
-
-function drawHistoryList(){
+function drawHistory(){
     const container = document.getElementById('hist-list');
-    if(historyData.length === 0){ container.innerHTML = "<p style='text-align:center; padding:20px; opacity:0.5;'>尚無歷史紀錄</p>"; return; }
+    if(historyData.length === 0){ container.innerHTML = "尚無比賽紀錄"; return; }
+    
     container.innerHTML = historyData.map((g, i) => `
         <div class="history-item">
-            <div class="history-card-header btn-ui" onclick="toggleHistory(this)">
-                <div>
-                    <small style="color:var(--muted); font-weight:700;">${g.info.date}</small>
-                    <div style="font-weight:900; font-size:1.1rem; margin-top:4px;">${g.info.team} ${g.score.us} : ${g.score.them} ${g.info.opp}</div>
-                </div>
-                <span style="color:var(--gold); font-size:1.2rem;">▼</span>
+            <div class="history-header" onclick="toggleH(this)">
+                <div><b style="font-size:1.1rem;">${g.info.team} ${g.score.us}:${g.score.them} ${g.info.opp}</b><br><small style="color:var(--muted);">${g.info.date}</small></div>
+                <div style="color:var(--gold)">▼</div>
             </div>
-            <div class="history-content">
-                <div class="tw">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th><th>姓名</th><th>得分</th>
-                                <th>三分(%)</th><th>兩分(%)</th><th>罰球(%)</th>
-                                <th>助攻</th><th>火鍋</th><th>抄截</th><th>失誤</th><th>犯規</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${g.players.map(p => {
-                                const s = g.stats[p.name];
-                                return `<tr><td>${p.num}</td><td>${p.name}</td><td style="color:var(--red); font-weight:bold;">${s.pts}</td><td>${pct(s.f3m, s.f3a)}</td><td>${pct(s.f2m, s.f2a)}</td><td>${pct(s.ftm, s.fta)}</td><td>${s.ast}</td><td>${s.blk}</td><td>${s.stl}</td><td>${s.to}</td><td>${s.foul}</td></tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                <button class="btn-main-red btn-ui" style="margin-top:20px;" onclick="buildCanvas(${i})">🖼 下載戰報圖片</button>
+            <div class="history-body">
+                <table style="font-size:0.9rem;">
+                    <tr style="color:var(--muted);"><th>#</th><th>姓名</th><th>得分</th><th>助攻/阻攻</th></tr>
+                    ${g.players.map(p => `<tr><td>${p.num}</td><td>${p.name}</td><td style="color:var(--red); font-weight:bold;">${g.stats[p.name].pts}</td><td>${g.stats[p.name].ast}/${g.stats[p.name].blk}</td></tr>`).join('')}
+                </table>
             </div>
         </div>
     `).join('');
 }
 
-function toggleHistory(el) {
-    const content = el.nextElementSibling;
-    const icon = el.querySelector('span');
-    content.classList.toggle('active');
-    icon.style.transform = content.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
-    icon.style.transition = 'transform 0.3s';
+function toggleH(el){
+    const body = el.nextElementSibling;
+    body.classList.toggle('active');
+    el.querySelector('div:last-child').style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
-function buildCanvas(idx){
-    const g = historyData[idx];
-    document.getElementById('exp-title').innerText = `${g.info.team} VS ${g.info.opp} 賽後數據`;
-    document.getElementById('exp-meta').innerText = `${g.info.date} | 比分 ${g.score.us}:${g.score.them}`;
-    let html = '';
-    g.players.forEach(p => {
-        const s = g.stats[p.name];
-        html += `<tr><td>${p.num}</td><td>${p.name}</td><td>${s.pts}</td><td>${s.f3m}/${s.f3a}</td><td>${s.f2m}/${s.f2a}</td><td>${s.ftm}/${s.fta}</td><td>${s.ast}</td><td>${s.blk}</td><td>${s.stl}</td><td>${s.to}</td><td>${s.foul}</td></tr>`;
-    });
-    document.getElementById('exp-body').innerHTML = html;
-    html2canvas(document.getElementById('export-area')).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `戰報_${g.info.date}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-    });
-}
-
-function showToast(msg){
+function showToast(m){
     const t = document.getElementById('toast');
-    t.innerText = msg; t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 2000);
+    t.innerText = m; t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2500);
 }
-document.getElementById('g-date').value = new Date().toISOString().slice(0,10);
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
 </script>
 </body>
-</html> 
+</html>
