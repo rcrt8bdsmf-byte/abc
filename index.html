@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" href="favicon.png" type="image/png">
-<title>計分板 Pro Elite | 雲端帳號版</title>
+<title>計分板 Pro Elite | 雲端全功能版</title>
 
 <!-- 📱 PWA 設定 -->
 <link rel="apple-touch-icon" href="icon.png">
@@ -30,12 +30,13 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', s
 button { transition: all 0.2s; cursor: pointer; border: none; }
 button:active { transform: scale(0.92); opacity: 0.8; }
 
+/* 🔑 登入遮罩 */
 #login-screen { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: var(--bg); z-index: 9999; display: flex; 
     align-items: center; justify-content: center; padding: 20px;
 }
-.login-box { background: var(--mid); padding: 30px; border-radius: 24px; width: 100%; max-width: 400px; border: 1px solid var(--bdr); text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.login-box { background: var(--mid); padding: 30px; border-radius: 24px; width: 100%; max-width: 400px; border: 1px solid var(--bdr); text-align: center; }
 .auth-input { width: 100%; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--bdr); border-radius: 12px; color: white; margin-bottom: 12px; font-size: 16px; }
 
 header { background: #000; padding: 20px; text-align: center; border-bottom: 2px solid var(--red); }
@@ -44,20 +45,21 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
 .tab { padding: 16px; flex: 1; text-align: center; font-weight: 700; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
 .tab.active { color: var(--red); border-bottom: 3px solid var(--red); }
 
-.panel { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.panel { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
 .panel.active { display: block; }
 .card { background: var(--mid); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--bdr); }
 .score-num { font-family: 'Oswald'; font-size: 3.5rem; font-weight: 700; color: #fff; }
 
 .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 15px; }
 .pcard { background: var(--mid); border-radius: 20px; padding: 15px; border: 1px solid var(--bdr); border-left: 5px solid var(--red); }
-.btn-in { width:100%; background: #10b981; color: white; border-radius: 12px; padding: 12px 0; font-weight: 900; margin-top:10px; }
+.btn-in { background: #10b981; color: white; border-radius: 12px; padding: 12px 0; font-weight: 900; }
 
 .history-item { margin-bottom: 12px; background: var(--mid); border-radius: 12px; overflow: hidden; border: 1px solid var(--bdr); }
 .history-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .history-body { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; background: rgba(0,0,0,0.2); }
 .history-body.active { max-height: 1500px; padding: 15px; border-top: 1px solid var(--bdr); }
+table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 10px; }
+th, td { padding: 10px; border-bottom: 1px solid var(--bdr); }
 
 #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 30px; border-radius: 40px; display: none; z-index: 2000; font-weight: bold; }
 </style>
@@ -68,9 +70,9 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
     <div class="login-box">
         <h2 style="margin-bottom:20px; font-family:'Oswald'; color:var(--red); letter-spacing:2px;">PRO DATA LOGIN</h2>
         <input type="email" id="auth-email" class="auth-input" placeholder="Email 地址">
-        <input type="password" id="auth-password" class="auth-input" placeholder="密碼">
-        <button id="btn-login" class="auth-input" style="background:var(--red); font-weight:900; color:white; margin-top:10px;">進入系統 / 註冊</button>
-        <p style="font-size:0.75rem; color:var(--muted); margin-top:15px;">※ 首次登入會自動建立帳號</p>
+        <input type="password" id="auth-password" class="auth-input" placeholder="密碼 (至少6位)">
+        <button id="btn-login" class="auth-input" style="background:var(--red); font-weight:900; color:white; margin-top:10px;">進入系統 / 註冊帳號</button>
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:15px;">※ 首次登入將自動為您建立雲端空間</p>
     </div>
 </div>
 
@@ -92,35 +94,35 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
         <input type="text" id="g-opp" placeholder="對手隊名">
         <input type="date" id="g-date">
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <input type="number" id="p-num" placeholder="背號" style="flex:1">
-            <input type="text" id="p-name" placeholder="姓名" style="flex:2">
+            <input type="number" id="p-num" placeholder="背號" style="flex:1" oninput="if(value.length>2)value=value.slice(0,2)">
+            <input type="text" id="p-name" placeholder="球員姓名" style="flex:2">
         </div>
         <button onclick="addSinglePlayer()" style="width:100%; padding:12px; background:rgba(251,191,36,0.1); color:var(--gold); border:1px solid var(--gold); border-radius:12px; font-weight:bold;">+ 新增球員</button>
-        <div id="p-list-preview" style="margin-top:15px; color:var(--muted); font-size:0.8rem;"></div>
+        <div id="p-list-preview" style="margin-top:15px; color:var(--muted); font-size:0.9rem;"></div>
     </div>
-    <button onclick="startGame()" style="width:100%; padding:20px; background:var(--red); border-radius:16px; font-weight:900; font-size:1.2rem;">▶ 開始紀錄</button>
+    <button onclick="startGame()" style="width:100%; padding:20px; background:var(--red); border-radius:16px; font-weight:900; font-size:1.2rem;">▶ 開始正式紀錄</button>
 </div>
 
 <div class="panel" id="p-record">
     <div class="card" style="text-align:center;">
-        <span class="score-num" id="sb-us">0</span> <small style="opacity:0.5">VS</small> <span class="score-num" id="sb-them">0</span>
+        <span class="score-num" id="sb-us">0</span> <span style="font-size:1.5rem; opacity:0.3; margin:0 15px;">VS</span> <span class="score-num" id="sb-them">0</span>
         <div style="display:flex; justify-content:center; gap:10px; margin-top:15px;">
-            <button onclick="adjThem(1)" style="padding:10px; background:var(--mid); border:1px solid var(--bdr); border-radius:8px; color:white;">對手 +1</button>
-            <button onclick="adjThem(-1)" style="padding:10px; background:var(--mid); border:1px solid var(--bdr); border-radius:8px; color:var(--red);">修正 -1</button>
+            <button onclick="adjThem(1)" style="padding:10px 20px; background:var(--mid); border-radius:10px; color:white; border:1px solid var(--bdr);">對手 +1</button>
+            <button onclick="adjThem(-1)" style="padding:10px 20px; background:var(--mid); border-radius:10px; color:var(--red); border:1px solid var(--bdr);">修正 -1</button>
         </div>
     </div>
     <div id="pgrid" class="pgrid"></div>
-    <button onclick="saveGame()" style="width:100%; padding:20px; background:var(--gold); color:#000; border-radius:16px; font-weight:900; margin-top:20px;">💾 結束比賽並同步雲端</button>
+    <button onclick="saveGame()" style="width:100%; padding:20px; background:var(--gold); color:#000; border-radius:16px; font-weight:900; margin-top:20px;">💾 結束比賽並同步至雲端</button>
 </div>
 
 <div class="panel" id="p-history">
-    <div id="hist-list" style="text-align:center; padding:40px; opacity:0.5;">讀取雲端數據中...</div>
+    <div id="hist-list">讀取歷史數據中...</div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-// --- 1. Firebase 初始化 ---
+// --- 1. Firebase 初始化 (使用最新生成的 Key) ---
 const firebaseConfig = {
   apiKey: "AIzaSyBOwJwfR1pNKqUkJ3pi8GVnIXscT4pKbcQ",
   authDomain: "prodata-a547a.firebaseapp.com",
@@ -131,29 +133,34 @@ const firebaseConfig = {
   measurementId: "G-CBLGTRZ5HQ"
 };
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- 2. 登入邏輯 ---
+// --- 2. 登入邏輯與密碼提示功能 ---
 document.getElementById('btn-login').onclick = async () => {
-    const email = document.getElementById('auth-email').value;
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    if(!email || !password) return alert("請輸入信箱與密碼");
-    
+    if(!email || !password) return alert("請輸入完整帳號密碼");
+
     try {
         await auth.signInWithEmailAndPassword(email, password);
     } catch (e) {
-        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+        console.log("登入失敗狀態:", e.code);
+        // 如果帳號不存在或憑證無效，嘗試註冊新帳號
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-login-credentials') {
             try {
                 await auth.createUserWithEmailAndPassword(email, password);
-            } catch(createErr) {
-                alert("建立帳號失敗: " + createErr.message);
+                alert("歡迎！已為您建立全新的雲端帳號。");
+            } catch (createErr) {
+                if (createErr.code === 'auth/weak-password') alert("註冊失敗：密碼太短，請至少輸入 6 位數。");
+                else if (createErr.code === 'auth/email-already-in-use') alert("密碼錯誤：此帳號已存在，請輸入正確密碼。");
+                else alert("存取失敗：" + createErr.message);
             }
+        } else if (e.code === 'auth/wrong-password') {
+            alert("密碼錯誤，請重新輸入。");
         } else {
-            alert("登入失敗: " + e.message);
+            alert("登入異常：" + e.message);
         }
     }
 };
@@ -165,7 +172,7 @@ auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('user-info').innerText = '🏀 帳戶: ' + user.email;
+        document.getElementById('user-info').innerText = '已登入：' + user.email;
         loadHistoryFromCloud();
     } else {
         document.getElementById('login-screen').style.display = 'flex';
@@ -173,7 +180,7 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// --- 3. 比賽邏輯 ---
+// --- 3. 核心紀錄邏輯 (恢復所有功能) ---
 let players = [], stats = {}, score = {us:0, them:0}, gInfo = {};
 let historyData = [];
 
@@ -181,8 +188,8 @@ function go(id){
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('p-'+id).classList.add('active');
-    const target = document.querySelector(`[onclick="go('${id}')"]`);
-    if(target) target.classList.add('active');
+    const tab = document.querySelector(`[onclick="go('${id}')"]`);
+    if(tab) tab.classList.add('active');
 }
 
 function addSinglePlayer(){
@@ -190,12 +197,12 @@ function addSinglePlayer(){
     const nm = document.getElementById('p-name').value;
     if(!n || !nm) return;
     players.push({num:n, name:nm});
-    document.getElementById('p-list-preview').innerText = "已加入: " + players.map(p => `#${p.num}`).join(', ');
+    document.getElementById('p-list-preview').innerText = "目前名單：" + players.map(p => `#${p.num} ${p.name}`).join(' | ');
     document.getElementById('p-num').value = ''; document.getElementById('p-name').value = '';
 }
 
 function startGame(){
-    if(players.length === 0) return alert("請先加入球員名單");
+    if(players.length === 0) return alert("請先加入球員");
     gInfo = { 
         team: document.getElementById('g-team').value, 
         opp: document.getElementById('g-opp').value || '對手', 
@@ -203,7 +210,7 @@ function startGame(){
     };
     score = {us:0, them:0}; stats = {};
     players.forEach(p => { 
-        stats[p.name] = { pts:0, num: p.num }; 
+        stats[p.name] = { pts:0, f3m:0, f2m:0, ftm:0, num: p.num }; 
     });
     refreshUI(); go('record');
 }
@@ -215,8 +222,8 @@ function refreshUI(){
     players.forEach(p => {
         const s = stats[p.name];
         h += `<div class="pcard">
-            <div style="font-weight:900;">#${s.num} ${p.name} <span style="float:right; color:var(--red);">${s.pts} PTS</span></div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;">
+            <div style="font-weight:900; margin-bottom:10px;">#${s.num} ${p.name} - <span style="color:var(--red);">${s.pts}分</span></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
                 <button class="btn-in" onclick="upS('${p.name}',3)">+3</button>
                 <button class="btn-in" onclick="upS('${p.name}',2)">+2</button>
                 <button class="btn-in" onclick="upS('${p.name}',1)">+1</button>
@@ -234,11 +241,10 @@ function upS(name, p){
 
 function adjThem(v){ score.them = Math.max(0, score.them+v); refreshUI(); }
 
-// --- 4. 雲端同步 ---
+// --- 4. 雲端同步與歷史紀錄 ---
 async function saveGame(){
-    if(!currentUser) return alert("請先登入");
-    if(!confirm("確定要儲存這場比賽嗎？")) return;
-    
+    if(!currentUser) return;
+    if(!confirm("確定要儲存並同步至雲端？")) return;
     try {
         await db.collection('user_matches').add({
             owner: currentUser.uid,
@@ -248,11 +254,11 @@ async function saveGame(){
             stats: stats,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        showToast("雲端同步成功！");
+        showToast("同步成功 ✓");
         loadHistoryFromCloud();
         go('history');
     } catch (e) {
-        alert("儲存失敗: " + e.message);
+        alert("同步失敗：" + e.message);
     }
 }
 
@@ -263,27 +269,26 @@ async function loadHistoryFromCloud(){
             .where('owner', '==', currentUser.uid)
             .orderBy('timestamp', 'desc')
             .get();
-        
         historyData = snap.docs.map(doc => doc.data());
         drawHistory();
     } catch (e) {
-        document.getElementById('hist-list').innerText = "尚未有紀錄或權限不足";
+        document.getElementById('hist-list').innerHTML = "暫無資料";
     }
 }
 
 function drawHistory(){
     const container = document.getElementById('hist-list');
-    if(historyData.length === 0){ container.innerHTML = "尚無歷史紀錄"; return; }
+    if(historyData.length === 0){ container.innerHTML = "尚未有歷史數據"; return; }
     
     container.innerHTML = historyData.map(g => `
         <div class="history-item">
             <div class="history-header" onclick="this.nextElementSibling.classList.toggle('active')">
                 <div><b>${g.info.team} ${g.score.us}:${g.score.them} ${g.info.opp}</b><br><small>${g.info.date}</small></div>
-                <div>▼</div>
+                <div style="color:var(--gold)">▼</div>
             </div>
             <div class="history-body">
-                <table style="width:100%; text-align:center;">
-                    <tr style="opacity:0.5"><th>#</th><th>姓名</th><th>得分</th></tr>
+                <table>
+                    <tr><th>#</th><th>球員</th><th>得分</th></tr>
                     ${g.players.map(p => `<tr><td>${p.num}</td><td>${p.name}</td><td>${g.stats[p.name].pts}</td></tr>`).join('')}
                 </table>
             </div>
@@ -294,7 +299,7 @@ function drawHistory(){
 function showToast(m){
     const t = document.getElementById('toast');
     t.innerText = m; t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 2000);
+    setTimeout(() => t.style.display = 'none', 2500);
 }
 </script>
 </body>
