@@ -4,15 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="icon" href="favicon.png" type="image/png">
-<meta name="description" content="籃球比賽紀錄專業工具，支援雲端同步與戰報匯出。">
 <title>計分板 Pro Elite | 雲端帳號版</title>
 
-<!-- 📱 PWA App 設定 -->
+<!-- 📱 PWA 設定 -->
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="計分板 Pro">
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
@@ -28,11 +26,10 @@
   --text: #f8fafc; --muted: #94a3b8; --bdr: rgba(255,255,255,0.06);
 }
 * { margin:0; padding:0; box-sizing:border-box; touch-action: manipulation; }
-body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; overflow-x: hidden; }
 button { transition: all 0.2s; cursor: pointer; border: none; }
 button:active { transform: scale(0.92); opacity: 0.8; }
 
-/* 🔑 登入遮罩 */
 #login-screen { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: var(--bg); z-index: 9999; display: flex; 
@@ -47,14 +44,15 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
 .tab { padding: 16px; flex: 1; text-align: center; font-weight: 700; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
 .tab.active { color: var(--red); border-bottom: 3px solid var(--red); }
 
-.panel { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
+.panel { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .panel.active { display: block; }
 .card { background: var(--mid); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--bdr); }
 .score-num { font-family: 'Oswald'; font-size: 3.5rem; font-weight: 700; color: #fff; }
 
 .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 15px; }
 .pcard { background: var(--mid); border-radius: 20px; padding: 15px; border: 1px solid var(--bdr); border-left: 5px solid var(--red); }
-.btn-in { background: #10b981; color: white; border-radius: 12px; padding: 12px 0; font-weight: 900; }
+.btn-in { width:100%; background: #10b981; color: white; border-radius: 12px; padding: 12px 0; font-weight: 900; margin-top:10px; }
 
 .history-item { margin-bottom: 12px; background: var(--mid); border-radius: 12px; overflow: hidden; border: 1px solid var(--bdr); }
 .history-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
@@ -66,14 +64,13 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
 </head>
 <body>
 
-<!-- 🔑 登入介面 -->
 <div id="login-screen">
     <div class="login-box">
         <h2 style="margin-bottom:20px; font-family:'Oswald'; color:var(--red); letter-spacing:2px;">PRO DATA LOGIN</h2>
         <input type="email" id="auth-email" class="auth-input" placeholder="Email 地址">
-        <input type="password" id="auth-password" class="auth-input" placeholder="設定密碼">
-        <button id="btn-login" class="auth-input" style="background:var(--red); font-weight:900; color:white; margin-top:10px;">進入系統 / 註冊帳號</button>
-        <p style="font-size:0.75rem; color:var(--muted); margin-top:15px;">※ 首次登入將自動建立專屬雲端帳號</p>
+        <input type="password" id="auth-password" class="auth-input" placeholder="密碼">
+        <button id="btn-login" class="auth-input" style="background:var(--red); font-weight:900; color:white; margin-top:10px;">進入系統 / 註冊</button>
+        <p style="font-size:0.75rem; color:var(--muted); margin-top:15px;">※ 首次登入會自動建立帳號</p>
     </div>
 </div>
 
@@ -85,86 +82,90 @@ header h1 { font-family: 'Oswald'; font-size: 1.8rem; letter-spacing: 2px; color
 <div class="tabs">
     <div class="tab active" onclick="go('setup')">設定</div>
     <div class="tab" onclick="go('record')">紀錄</div>
-    <div class="tab" onclick="go('history')">分析紀錄</div>
+    <div class="tab" onclick="go('history')">生涯紀錄</div>
     <div class="tab" id="btn-logout" style="color:var(--muted)">登出</div>
 </div>
 
 <div class="panel active" id="p-setup">
     <div class="card">
-        <div style="font-size:0.8rem; color:var(--gold); margin-bottom:10px; font-weight:bold;">比賽資訊</div>
         <input type="text" id="g-team" value="我的球隊">
         <input type="text" id="g-opp" placeholder="對手隊名">
         <input type="date" id="g-date">
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <input type="number" id="p-num" placeholder="背號" style="flex:1" oninput="if(value.length>2)value=value.slice(0,2)">
-            <input type="text" id="p-name" placeholder="球員姓名" style="flex:2">
+            <input type="number" id="p-num" placeholder="背號" style="flex:1">
+            <input type="text" id="p-name" placeholder="姓名" style="flex:2">
         </div>
         <button onclick="addSinglePlayer()" style="width:100%; padding:12px; background:rgba(251,191,36,0.1); color:var(--gold); border:1px solid var(--gold); border-radius:12px; font-weight:bold;">+ 新增球員</button>
-        <div id="p-list-preview" style="margin-top:15px; color:var(--muted); font-size:0.9rem;"></div>
+        <div id="p-list-preview" style="margin-top:15px; color:var(--muted); font-size:0.8rem;"></div>
     </div>
-    <button onclick="startGame()" style="width:100%; padding:20px; background:var(--red); border-radius:16px; font-weight:900; font-size:1.2rem; box-shadow: 0 4px 15px rgba(244,63,94,0.3);">▶ 開始正式紀錄</button>
+    <button onclick="startGame()" style="width:100%; padding:20px; background:var(--red); border-radius:16px; font-weight:900; font-size:1.2rem;">▶ 開始紀錄</button>
 </div>
 
 <div class="panel" id="p-record">
-    <div class="card" style="text-align:center; background:linear-gradient(145deg, #1e293b, #0f172a);">
-        <span class="score-num" id="sb-us">0</span> <span style="font-size:1.5rem; opacity:0.3; margin:0 15px;">VS</span> <span class="score-num" id="sb-them">0</span>
+    <div class="card" style="text-align:center;">
+        <span class="score-num" id="sb-us">0</span> <small style="opacity:0.5">VS</small> <span class="score-num" id="sb-them">0</span>
         <div style="display:flex; justify-content:center; gap:10px; margin-top:15px;">
-            <button onclick="adjThem(1)" style="padding:10px 20px; background:var(--panel); color:white; border-radius:10px; font-weight:bold;">對手 +1</button>
-            <button onclick="adjThem(-1)" style="padding:10px 20px; background:rgba(244,63,94,0.2); color:var(--red); border-radius:10px; font-weight:bold;">-1 修正</button>
+            <button onclick="adjThem(1)" style="padding:10px; background:var(--mid); border:1px solid var(--bdr); border-radius:8px; color:white;">對手 +1</button>
+            <button onclick="adjThem(-1)" style="padding:10px; background:var(--mid); border:1px solid var(--bdr); border-radius:8px; color:var(--red);">修正 -1</button>
         </div>
     </div>
     <div id="pgrid" class="pgrid"></div>
-    <button onclick="saveGame()" style="width:100%; padding:20px; background:var(--gold); color:#000; border-radius:16px; font-weight:900; margin-top:20px; box-shadow: 0 4px 15px rgba(251,191,36,0.3);">💾 結束比賽並同步雲端</button>
+    <button onclick="saveGame()" style="width:100%; padding:20px; background:var(--gold); color:#000; border-radius:16px; font-weight:900; margin-top:20px;">💾 結束比賽並同步雲端</button>
 </div>
 
 <div class="panel" id="p-history">
-    <div id="hist-list" style="text-align:center; padding:40px; opacity:0.5;">同步中...</div>
+    <div id="hist-list" style="text-align:center; padding:40px; opacity:0.5;">讀取雲端數據中...</div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-// 📋 --- 1. Firebase 初始化 ---
+// --- 1. Firebase 初始化 ---
 const firebaseConfig = {
-  apiKey: "AIzaSyCFK9ocG6pfzVRT3fa1Tg1xbGLROhT1xmw",
+  apiKey: "AIzaSyBOwJwfR1pNKqUkJ3pi8GVnIXscT4pKbcQ",
   authDomain: "prodata-a547a.firebaseapp.com",
   projectId: "prodata-a547a",
   storageBucket: "prodata-a547a.firebasestorage.app",
   messagingSenderId: "177275235931",
-  appId: "1:177275235931:web:621d1f3bd10b3512df597e",
-  measurementId: "G-CF3FEMLYY8"
+  appId: "1:177275235931:web:c49ab3f8f154402ddf597e",
+  measurementId: "G-CBLGTRZ5HQ"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 📋 --- 2. 帳號與同步邏輯 ---
-let currentUser = null;
-
+// --- 2. 登入邏輯 ---
 document.getElementById('btn-login').onclick = async () => {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-    if(!email || !password) return alert("請輸入完整帳密");
+    if(!email || !password) return alert("請輸入信箱與密碼");
+    
     try {
         await auth.signInWithEmailAndPassword(email, password);
     } catch (e) {
-        if (e.code === 'auth/user-not-found') {
-            await auth.createUserWithEmailAndPassword(email, password);
-            showToast("帳號建立成功！");
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch(createErr) {
+                alert("建立帳號失敗: " + createErr.message);
+            }
         } else {
-            alert('登入失敗：' + e.message);
+            alert("登入失敗: " + e.message);
         }
     }
 };
 
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 
+let currentUser = null;
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('user-info').innerText = '帳戶：' + user.email;
+        document.getElementById('user-info').innerText = '🏀 帳戶: ' + user.email;
         loadHistoryFromCloud();
     } else {
         document.getElementById('login-screen').style.display = 'flex';
@@ -172,7 +173,7 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// 📋 --- 3. 核心紀錄功能 ---
+// --- 3. 比賽邏輯 ---
 let players = [], stats = {}, score = {us:0, them:0}, gInfo = {};
 let historyData = [];
 
@@ -180,8 +181,8 @@ function go(id){
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('p-'+id).classList.add('active');
-    const targetTab = document.querySelector(`[onclick="go('${id}')"]`);
-    if(targetTab) targetTab.classList.add('active');
+    const target = document.querySelector(`[onclick="go('${id}')"]`);
+    if(target) target.classList.add('active');
 }
 
 function addSinglePlayer(){
@@ -189,15 +190,21 @@ function addSinglePlayer(){
     const nm = document.getElementById('p-name').value;
     if(!n || !nm) return;
     players.push({num:n, name:nm});
-    document.getElementById('p-list-preview').innerText = "名單：" + players.map(p => `#${p.num} ${p.name}`).join(' | ');
+    document.getElementById('p-list-preview').innerText = "已加入: " + players.map(p => `#${p.num}`).join(', ');
     document.getElementById('p-num').value = ''; document.getElementById('p-name').value = '';
 }
 
 function startGame(){
-    if(players.length === 0) return alert("名單為空");
-    gInfo = { team: document.getElementById('g-team').value, opp: document.getElementById('g-opp').value || '對手', date: document.getElementById('g-date').value || new Date().toISOString().slice(0,10) };
+    if(players.length === 0) return alert("請先加入球員名單");
+    gInfo = { 
+        team: document.getElementById('g-team').value, 
+        opp: document.getElementById('g-opp').value || '對手', 
+        date: document.getElementById('g-date').value || new Date().toISOString().slice(0,10) 
+    };
     score = {us:0, them:0}; stats = {};
-    players.forEach(p => { stats[p.name] = { pts:0, f3m:0, f3a:0, f2m:0, f2a:0, ftm:0, fta:0, ast:0, blk:0, num: p.num }; });
+    players.forEach(p => { 
+        stats[p.name] = { pts:0, num: p.num }; 
+    });
     refreshUI(); go('record');
 }
 
@@ -208,101 +215,86 @@ function refreshUI(){
     players.forEach(p => {
         const s = stats[p.name];
         h += `<div class="pcard">
-            <div style="font-weight:900; margin-bottom:10px; font-size:1.1rem; color:var(--gold);">#${s.num} ${p.name} <span style="float:right; color:var(--red);">${s.pts}分</span></div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
-                <button class="btn-in" onclick="upS('${p.name}','f3',1)">+3</button>
-                <button class="btn-in" onclick="upS('${p.name}','f2',1)">+2</button>
-                <button class="btn-in" onclick="upS('${p.name}','ft',1)">+1</button>
+            <div style="font-weight:900;">#${s.num} ${p.name} <span style="float:right; color:var(--red);">${s.pts} PTS</span></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;">
+                <button class="btn-in" onclick="upS('${p.name}',3)">+3</button>
+                <button class="btn-in" onclick="upS('${p.name}',2)">+2</button>
+                <button class="btn-in" onclick="upS('${p.name}',1)">+1</button>
             </div>
         </div>`;
     });
     document.getElementById('pgrid').innerHTML = h;
 }
 
-function upS(name, type, hit){
-    const s = stats[name]; s[type+'m']++; s[type+'a']++;
-    let p = type==='f3'?3:(type==='f2'?2:1);
-    s.pts += p; score.us += p; refreshUI();
+function upS(name, p){
+    stats[name].pts += p;
+    score.us += p;
+    refreshUI();
 }
 
 function adjThem(v){ score.them = Math.max(0, score.them+v); refreshUI(); }
 
-// 📋 --- 4. 雲端同步與數據拉取 ---
+// --- 4. 雲端同步 ---
 async function saveGame(){
     if(!currentUser) return alert("請先登入");
-    if(!confirm("確定要儲存比賽數據至雲端？")) return;
-    
-    const matchData = {
-        owner: currentUser.uid,
-        info: gInfo,
-        score: score,
-        players: players,
-        stats: stats,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    if(!confirm("確定要儲存這場比賽嗎？")) return;
     
     try {
-        await db.collection('user_matches').add(matchData);
-        showToast("雲端儲存成功！");
+        await db.collection('user_matches').add({
+            owner: currentUser.uid,
+            info: gInfo,
+            score: score,
+            players: players,
+            stats: stats,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showToast("雲端同步成功！");
         loadHistoryFromCloud();
         go('history');
     } catch (e) {
-        alert("儲存失敗：" + e.message);
+        alert("儲存失敗: " + e.message);
     }
 }
 
 async function loadHistoryFromCloud(){
     if(!currentUser) return;
-    const listDiv = document.getElementById('hist-list');
     try {
-        const snapshot = await db.collection('user_matches')
+        const snap = await db.collection('user_matches')
             .where('owner', '==', currentUser.uid)
             .orderBy('timestamp', 'desc')
             .get();
         
-        historyData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        historyData = snap.docs.map(doc => doc.data());
         drawHistory();
     } catch (e) {
-        listDiv.innerHTML = "紀錄載入失敗，請確認資料庫權限。";
+        document.getElementById('hist-list').innerText = "尚未有紀錄或權限不足";
     }
 }
 
 function drawHistory(){
     const container = document.getElementById('hist-list');
-    if(historyData.length === 0){ container.innerHTML = "尚無比賽紀錄"; return; }
+    if(historyData.length === 0){ container.innerHTML = "尚無歷史紀錄"; return; }
     
-    container.innerHTML = historyData.map((g, i) => `
+    container.innerHTML = historyData.map(g => `
         <div class="history-item">
-            <div class="history-header" onclick="toggleH(this)">
-                <div><b style="font-size:1.1rem;">${g.info.team} ${g.score.us}:${g.score.them} ${g.info.opp}</b><br><small style="color:var(--muted);">${g.info.date}</small></div>
-                <div style="color:var(--gold)">▼</div>
+            <div class="history-header" onclick="this.nextElementSibling.classList.toggle('active')">
+                <div><b>${g.info.team} ${g.score.us}:${g.score.them} ${g.info.opp}</b><br><small>${g.info.date}</small></div>
+                <div>▼</div>
             </div>
             <div class="history-body">
-                <table style="font-size:0.9rem;">
-                    <tr style="color:var(--muted);"><th>#</th><th>姓名</th><th>得分</th><th>助攻/阻攻</th></tr>
-                    ${g.players.map(p => `<tr><td>${p.num}</td><td>${p.name}</td><td style="color:var(--red); font-weight:bold;">${g.stats[p.name].pts}</td><td>${g.stats[p.name].ast}/${g.stats[p.name].blk}</td></tr>`).join('')}
+                <table style="width:100%; text-align:center;">
+                    <tr style="opacity:0.5"><th>#</th><th>姓名</th><th>得分</th></tr>
+                    ${g.players.map(p => `<tr><td>${p.num}</td><td>${p.name}</td><td>${g.stats[p.name].pts}</td></tr>`).join('')}
                 </table>
             </div>
         </div>
     `).join('');
 }
 
-function toggleH(el){
-    const body = el.nextElementSibling;
-    body.classList.toggle('active');
-    el.querySelector('div:last-child').style.transform = body.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
-}
-
 function showToast(m){
     const t = document.getElementById('toast');
     t.innerText = m; t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 2500);
-}
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js');
-  });
+    setTimeout(() => t.style.display = 'none', 2000);
 }
 </script>
 </body>
