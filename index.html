@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
 <title>BASKETBALL PRO ELITE</title>
 
@@ -14,7 +14,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 
 <style>
-
 :root{
   --bg:#050816;
   --card:#101827;
@@ -35,6 +34,448 @@
 }
 
 body{
+  background:
+    radial-gradient(circle at top left,#172033 0%,transparent 35%),
+    radial-gradient(circle at bottom right,#3a0d1d 0%,transparent 30%),
+    var(--bg);
+  min-height:100vh;
+  color:var(--text);
+  font-family:'Noto Sans TC',sans-serif;
+  overflow-x:hidden;
+}
+
+.bg-glow{
+  position:fixed;
+  width:500px;
+  height:500px;
+  border-radius:50%;
+  filter:blur(120px);
+  opacity:.15;
+  z-index:-1;
+  animation:float 10s ease-in-out infinite;
+}
+
+.glow1{ background:#ff375f; top:-150px; left:-150px; }
+.glow2{ background:#0066ff; bottom:-200px; right:-100px; animation-delay:3s; }
+
+@keyframes float{ 0%,100%{ transform:translateY(0px); } 50%{ transform:translateY(40px); } }
+
+/* LOGIN */
+#login-screen{
+  position:fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  z-index:999; backdrop-filter:blur(12px); padding:20px;
+}
+.login-box{
+  width:100%; max-width:430px;
+  background:rgba(16,24,39,.8);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:32px; padding:35px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 40px rgba(255,55,95,.08);
+  animation:fadeUp .7s ease;
+}
+
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(30px); } to{ opacity:1; transform:translateY(0); } }
+
+.logo{ font-family:'Oswald'; text-align:center; font-size:2.4rem; letter-spacing:3px; margin-bottom:8px; }
+.logo span{ color:var(--red); }
+.sub{ text-align:center; color:var(--muted); margin-bottom:28px; font-size:.92rem; }
+
+.input{
+  width:100%; border:none; outline:none; background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.06); border-radius:18px;
+  padding:16px; color:white; margin-bottom:14px; transition:.25s; font-size:15px;
+}
+.input:focus{ border-color:var(--red); box-shadow:0 0 0 4px rgba(255,55,95,.12); }
+
+.main-btn{
+  width:100%; border:none; background:linear-gradient(135deg,var(--red),#ff6b8b);
+  color:white; font-weight:900; padding:16px; border-radius:18px;
+  font-size:1rem; cursor:pointer; transition:.25s;
+  box-shadow:0 10px 30px rgba(255,55,95,.25);
+}
+.main-btn:active{ transform:scale(.96); }
+
+/* HEADER */
+header{ padding:28px 22px 18px; }
+.title{ font-family:'Oswald'; font-size:2.4rem; letter-spacing:2px; }
+.title span{ color:var(--red); }
+.user{ margin-top:8px; color:var(--gold); font-size:.82rem; font-weight:700; }
+
+/* TABS */
+.tabs{ display:flex; gap:10px; padding:0 18px; margin-bottom:22px; }
+.tab{
+  flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.05);
+  padding:14px; text-align:center; border-radius:16px; color:var(--muted);
+  font-weight:800; transition:.25s; cursor:pointer; backdrop-filter:blur(12px);
+}
+.tab.active{ background:linear-gradient(135deg,var(--red),#ff6484); color:white; box-shadow:0 8px 25px rgba(255,55,95,.25); }
+
+/* PANEL */
+.panel{ display:none; padding:0 18px 40px; animation:fade .4s ease; }
+.panel.active{ display:block; }
+@keyframes fade{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:translateY(0); } }
+
+.card{
+  background:rgba(16,24,39,.85); border:1px solid rgba(255,255,255,.05);
+  border-radius:28px; padding:22px; margin-bottom:18px; backdrop-filter:blur(18px);
+  box-shadow:0 10px 30px rgba(0,0,0,.22);
+}
+
+/* SCOREBOARD */
+.scoreboard{ text-align:center; padding:30px; overflow:hidden; position:relative; }
+.scoreboard::before{ content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,55,95,.08),transparent); }
+.score-wrap{ position:relative; z-index:2; }
+.score{ font-family:'Oswald'; font-size:5rem; line-height:1; }
+.vs{ opacity:.25; margin:0 12px; font-size:1.5rem; }
+.score-btns{ display:flex; justify-content:center; gap:10px; margin-top:18px; }
+.small-btn{ border:none; padding:12px 18px; border-radius:14px; font-weight:800; cursor:pointer; transition:.2s; }
+.enemy{ background:#1d293d; color:white; }
+.enemy-minus{ background:rgba(255,55,95,.12); color:var(--red); }
+
+/* PLAYER GRID */
+.players{ display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:16px; }
+.player{
+  background:linear-gradient(145deg,#101827,#172033); border-radius:28px;
+  padding:20px; border:1px solid rgba(255,255,255,.05); transition:.25s;
+  position:relative; overflow:hidden;
+}
+.player::after{ content:''; position:absolute; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.03); top:-50px; right:-50px; }
+.player-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.player-name{ font-weight:900; font-size:1.08rem; }
+.player-score{ font-family:'Oswald'; font-size:2rem; color:var(--red); }
+
+.point-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+.point-btn{
+  border:none; border-radius:18px; padding:16px 0; font-size:1.1rem;
+  font-weight:900; background:linear-gradient(135deg,#00d084,#00b56f);
+  color:white; cursor:pointer; box-shadow:0 10px 20px rgba(0,208,132,.15);
+}
+.extra-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.extra-btn{ border:none; border-radius:16px; padding:13px 0; background:rgba(255,255,255,.05); color:var(--text); font-weight:700; }
+
+/* INPUTS */
+.input-row{ display:flex; gap:10px; }
+.input2{ width:100%; border:none; outline:none; padding:15px; border-radius:16px; background:rgba(255,255,255,.05); color:white; margin-bottom:12px; border:1px solid rgba(255,255,255,.05); }
+.add-btn{ width:100%; padding:15px; border:none; border-radius:18px; background:rgba(255,204,77,.08); color:var(--gold); font-weight:900; }
+.save-btn{ width:100%; border:none; padding:22px; border-radius:24px; font-weight:900; font-size:1.08rem; background:linear-gradient(135deg,var(--gold),#ffdf87); color:black; box-shadow:0 15px 30px rgba(255,204,77,.22); margin-top: 18px;}
+
+/* HISTORY */
+.history{ display:flex; flex-direction:column; gap:14px; }
+.history-item{ background:rgba(16,24,39,.85); border-radius:24px; overflow:hidden; border:1px solid rgba(255,255,255,.05); }
+.history-header{ padding:22px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.history-body{ max-height:0; overflow:hidden; transition:.35s ease; }
+.history-body.active{ max-height:2000px; padding:0 18px 18px; }
+
+table{ width:100%; border-collapse:collapse; }
+th{ color:var(--muted); font-size:.8rem; padding:12px; text-align:center; border-bottom:1px solid rgba(255,255,255,.04); }
+td{ padding:12px; text-align:center; border-bottom:1px solid rgba(255,255,255,.04); }
+
+#toast{
+  position:fixed; left:50%; bottom:30px; transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--green),#00b56f); color:white;
+  padding:14px 26px; border-radius:999px; font-weight:900;
+  display:none; z-index:9999; box-shadow:0 10px 30px rgba(0,208,132,.25);
+}
+
+@media(max-width:720px){
+  .players{ grid-template-columns:1fr; }
+  .score{ font-size:3.8rem; }
+  .title{ font-size:2rem; }
+}
+</style>
+</head>
+
+<body>
+<div class="bg-glow glow1"></div>
+<div class="bg-glow glow2"></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="logo">BASKETBALL <span>PRO</span></div>
+    <div class="sub">Elite Cloud Stats System</div>
+    <input type="email" id="auth-email" class="input" placeholder="Email">
+    <input type="password" id="auth-password" class="input" placeholder="密碼 (至少6位)">
+    <button id="btn-login" class="main-btn">登入 / 註冊帳號</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="title">BASKETBALL <span>PRO</span></div>
+  <div class="user" id="user-info"></div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="go('setup')">設定</div>
+  <div class="tab" onclick="go('record')">紀錄</div>
+  <div class="tab" onclick="go('history')">分析</div>
+  <div class="tab" id="btn-logout" style="color:var(--muted)">登出</div>
+</div>
+
+<!-- SETUP -->
+<div class="panel active" id="p-setup">
+  <div class="card">
+    <input type="text" id="g-team" class="input2" value="我的球隊">
+    <input type="text" id="g-opp" class="input2" placeholder="對手隊名">
+    <input type="date" id="g-date" class="input2">
+    <div class="input-row">
+      <input type="number" id="p-num" class="input2" placeholder="背號">
+      <input type="text" id="p-name" class="input2" placeholder="球員姓名">
+    </div>
+    <button onclick="addPlayer()" class="add-btn">+ 新增球員</button>
+    <div id="preview" style="margin-top:18px;color:var(--muted);line-height:1.8;"></div>
+  </div>
+  <button onclick="startGame()" class="save-btn">▶ 開始比賽</button>
+</div>
+
+<!-- RECORD -->
+<div class="panel" id="p-record">
+  <div class="card scoreboard">
+    <div class="score-wrap">
+      <span class="score" id="us-score">0</span>
+      <span class="vs">VS</span>
+      <span class="score" id="them-score">0</span>
+      <div class="score-btns">
+        <button class="small-btn enemy" onclick="enemyScore(1)">對手 +1</button>
+        <button class="small-btn enemy-minus" onclick="enemyScore(-1)">修正 -1</button>
+      </div>
+    </div>
+  </div>
+  <div class="players" id="players"></div>
+  <button onclick="saveGame()" class="save-btn">💾 結束比賽並同步</button>
+</div>
+
+<!-- HISTORY -->
+<div class="panel" id="p-history">
+  <div class="history" id="history-list"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// --- 1. Firebase 初始化 (修正為您專案的新金鑰) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBOwJwfR1pNKqUkJ3pi8GVnIXscT4pKbcQ",
+  authDomain: "prodata-a547a.firebaseapp.com",
+  projectId: "prodata-a547a",
+  storageBucket: "prodata-a547a.firebasestorage.app",
+  messagingSenderId: "177275235931",
+  appId: "1:177275235931:web:c49ab3f8f154402ddf597e",
+  measurementId: "G-CBLGTRZ5HQ"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// --- 2. 狀態管理 ---
+let currentUser = null;
+let players = [];
+let stats = {};
+let score = { us:0, them:0 };
+let historyData = [];
+let gInfo = {};
+
+// --- 3. 登入邏輯 (修正註冊判斷) ---
+document.getElementById("btn-login").onclick = async ()=>{
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-password").value;
+  if(!email || !password) return alert("請輸入完整帳密");
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (e) {
+    // 修正: 捕捉帳號不存在或憑證錯誤，自動嘗試註冊
+    if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-login-credentials') {
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        showToast("歡迎！帳號已建立。");
+      } catch (err) {
+        if (err.code === 'auth/weak-password') alert("密碼太短，請至少 6 位數。");
+        else alert("註冊失敗: " + err.message);
+      }
+    } else {
+      alert("錯誤: " + e.message);
+    }
+  }
+};
+
+document.getElementById("btn-logout").onclick = ()=> auth.signOut();
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("user-info").innerHTML = "🏀 " + user.email;
+    loadHistory();
+  } else {
+    document.getElementById("login-screen").style.display = "flex";
+    currentUser = null;
+  }
+});
+
+// --- 4. 分頁切換 (修正 event 抓取問題) ---
+function go(id){
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("p-" + id).classList.add("active");
+  
+  // 透過 onclick 觸傳導向對應分頁樣式
+  const tabs = document.querySelectorAll(".tab");
+  const tabMap = {'setup':0, 'record':1, 'history':2};
+  if(tabMap[id] !== undefined) tabs[tabMap[id]].classList.add("active");
+}
+
+// --- 5. 球員與比賽邏輯 ---
+function addPlayer(){
+  const num = document.getElementById("p-num").value.trim();
+  const name = document.getElementById("p-name").value.trim();
+  if(!num || !name) return;
+  players.push({num, name});
+  document.getElementById("preview").innerHTML = players.map(p=>`#${p.num} ${p.name}`).join("<br>");
+  document.getElementById("p-num").value = "";
+  document.getElementById("p-name").value = "";
+}
+
+function startGame(){
+  if(players.length === 0) return alert("請先新增球員");
+  gInfo = {
+    team: document.getElementById("g-team").value,
+    opp: document.getElementById("g-opp").value || "對手",
+    date: document.getElementById("g-date").value || new Date().toISOString().slice(0,10)
+  };
+  score = { us:0, them:0 };
+  stats = {};
+  players.forEach(p => {
+    stats[p.name] = { pts:0, ast:0, blk:0, num:p.num };
+  });
+  renderPlayers();
+  go("record");
+}
+
+function renderPlayers(){
+  document.getElementById("us-score").innerText = score.us;
+  document.getElementById("them-score").innerText = score.them;
+  document.getElementById("players").innerHTML = players.map(p => {
+    const s = stats[p.name];
+    return `
+      <div class="player">
+        <div class="player-top">
+          <div class="player-name">#${s.num} ${p.name}</div>
+          <div class="player-score">${s.pts}</div>
+        </div>
+        <div class="point-grid">
+          <button class="point-btn" onclick="addScore('${p.name}',3)">+3</button>
+          <button class="point-btn" onclick="addScore('${p.name}',2)">+2</button>
+          <button class="point-btn" onclick="addScore('${p.name}',1)">+1</button>
+        </div>
+        <div class="extra-grid">
+          <button class="extra-btn" onclick="addAssist('${p.name}')">助攻 +1</button>
+          <button class="extra-btn" onclick="addBlock('${p.name}')">阻攻 +1</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function addScore(name, pts){
+  stats[name].pts += pts;
+  score.us += pts;
+  renderPlayers();
+}
+
+function addAssist(name){ stats[name].ast++; showToast(name + " 助攻 +1"); }
+function addBlock(name){ stats[name].blk++; showToast(name + " 阻攻 +1"); }
+function enemyScore(v){
+  score.them += v;
+  if(score.them < 0) score.them = 0;
+  renderPlayers();
+}
+
+// --- 6. 雲端儲存與歷史紀錄 ---
+async function saveGame(){
+  if(!currentUser) return alert("請先登入");
+  if(!confirm("確定要儲存比賽並同步雲端嗎？")) return;
+  try {
+    await db.collection("matches").add({
+      owner: currentUser.uid,
+      info: gInfo,
+      stats: stats,
+      players: players,
+      score: score,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast("同步成功 ✓");
+    loadHistory();
+    go("history");
+  } catch (e) {
+    alert("儲存錯誤: " + e.message);
+  }
+}
+
+async function loadHistory(){
+  if(!currentUser) return;
+  try {
+    const snap = await db.collection("matches")
+      .where("owner", "==", currentUser.uid)
+      .orderBy("createdAt", "desc")
+      .get();
+    historyData = snap.docs.map(doc => doc.data());
+    renderHistory();
+  } catch (e) {
+    console.log("讀取歷史失敗: " + e.message);
+  }
+}
+
+function renderHistory(){
+  const el = document.getElementById("history-list");
+  if(historyData.length === 0){
+    el.innerHTML = `<div class="card" style="text-align:center; opacity:.5;">目前尚無紀錄</div>`;
+    return;
+  }
+  el.innerHTML = historyData.map(g => `
+    <div class="history-item">
+      <div class="history-header" onclick="toggleHistory(this)">
+        <div>
+          <div style="font-weight:900;font-size:1.05rem;">${g.info.team} ${g.score.us}:${g.score.them} ${g.info.opp}</div>
+          <div style="margin-top:6px;color:var(--muted);font-size:.85rem;">${g.info.date || ""}</div>
+        </div>
+        <div style="color:var(--gold)">▼</div>
+      </div>
+      <div class="history-body">
+        <table>
+          <tr><th>#</th><th>球員</th><th>得分</th><th>助攻</th><th>阻攻</th></tr>
+          ${g.players.map(p => `
+            <tr>
+              <td>${p.num}</td>
+              <td>${p.name}</td>
+              <td style="color:var(--red);font-weight:900;">${g.stats[p.name].pts}</td>
+              <td>${g.stats[p.name].ast}</td>
+              <td>${g.stats[p.name].blk}</td>
+            </tr>`).join("")}
+        </table>
+      </div>
+    </div>`).join("");
+}
+
+function toggleHistory(el){
+  el.nextElementSibling.classList.toggle("active");
+}
+
+// --- 7. 通知功能 ---
+function showToast(msg){
+  const toast = document.getElementById("toast");
+  toast.innerText = msg;
+  toast.style.display = "block";
+  setTimeout(() => { toast.style.display = "none"; }, 2000);
+}
+</script>
+</body>
+</html>body{
   background:
     radial-gradient(circle at top left,#172033 0%,transparent 35%),
     radial-gradient(circle at bottom right,#3a0d1d 0%,transparent 30%),
